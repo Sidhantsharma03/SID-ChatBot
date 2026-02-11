@@ -3,31 +3,10 @@ const chatForm = document.getElementById('chatForm');
 const messageInput = document.getElementById('messageInput');
 const messageTemplate = document.getElementById('messageTemplate');
 
-const faqPatterns = [
-  {
-    test: /(hi|hello|hey)/i,
-    reply:
-      'Hey! I\'m SID ChatBot 👋\nAsk me questions, request ideas, summarize text, or get quick coding help.',
-  },
-  {
-    test: /(who are you|what are you)/i,
-    reply:
-      'I am SID ChatBot, a free browser-based assistant inspired by ChatGPT. I run entirely on simple frontend logic.',
-  },
-  {
-    test: /(help|what can you do)/i,
-    reply:
-      'I can help with:\n• Brainstorming\n• Writing drafts\n• Basic coding tips\n• Short summaries\n\nTry prompts like “Give me startup ideas” or “Explain JavaScript promises simply.”',
-  },
-  {
-    test: /(thank|thanks)/i,
-    reply: 'You are welcome! 😊 Need anything else?',
-  },
-  {
-    test: /(bye|goodbye|see you)/i,
-    reply: 'Goodbye! Come back any time to chat with SID ChatBot.',
-  },
-];
+const chatState = {
+  userName: null,
+  turns: 0,
+};
 
 function addMessage(role, text) {
   const node = messageTemplate.content.firstElementChild.cloneNode(true);
@@ -38,25 +17,86 @@ function addMessage(role, text) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-function buildSmartResponse(input) {
-  const trimmed = input.trim();
+function extractName(message) {
+  const namePatterns = [
+    /(?:i am|i'm|my name is)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})/i,
+    /(?:main|mai)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})\s+(?:hu|hoon)/i,
+    /(?:mera naam|myself)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})/i,
+  ];
 
-  for (const item of faqPatterns) {
-    if (item.test.test(trimmed)) {
-      return item.reply;
+  for (const pattern of namePatterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim().replace(/\s+/g, ' ');
     }
   }
 
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
+  return null;
+}
 
-  const tips = [
-    'Break your request into a goal, context, and constraints for better answers.',
-    'You can ask for multiple formats: bullets, table, or step-by-step.',
-    'If this is for coding, include language + expected input/output.',
-  ];
+function summarizeRequest(text) {
+  const cleaned = text.trim();
+  const shortText = cleaned.length > 120 ? `${cleaned.slice(0, 117)}...` : cleaned;
 
-  return `Here is a helpful response from SID ChatBot:\n\nYou said: “${trimmed}”\n\nQuick take:\n- Your message has ${wordCount} word${wordCount === 1 ? '' : 's'}.\n- I can expand this into a detailed plan, summary, or draft.\n- ${tips[Math.floor(Math.random() * tips.length)]}`;
+  return `Aapne pucha: “${shortText}”`;
+}
+
+function getTaskTemplate(text) {
+  const t = text.toLowerCase();
+
+  if (/(code|javascript|python|bug|fix|program|api|html|css)/i.test(t)) {
+    return 'Coding help mode ON ✅\n\nStep 1: Problem ko clear define karo.\nStep 2: Input/output examples do.\nStep 3: Main aapko clean solution + explanation de dunga.';
+  }
+
+  if (/(idea|startup|business|project)/i.test(t)) {
+    return 'Idea mode ON 🚀\n\n1) Niche choose karo\n2) Problem identify karo\n3) Solution build karo\n4) MVP test karo\n\nAgar chaho to main 5 ready-made ideas bhi de sakta hu.';
+  }
+
+  if (/(resume|cv|interview|job)/i.test(t)) {
+    return 'Career mode ON 💼\n\nMain aapka resume improve, interview Q&A prepare, aur role-specific answers bana sakta hu.';
+  }
+
+  if (/(summarize|summary|explain|samjha)/i.test(t)) {
+    return 'Explanation mode ON 📘\n\nMain difficult topic ko simple language me step-by-step samjha dunga.';
+  }
+
+  return 'Main is topic par aapko structured answer de sakta hu. Agar chaho to main isko:\n• short answer\n• detailed answer\n• step-by-step plan\nme convert kar du.';
+}
+
+function buildSmartResponse(input) {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return 'Kuch bhi pucho — main help karne ke liye ready hu.';
+  }
+
+  chatState.turns += 1;
+
+  const maybeName = extractName(trimmed);
+  if (maybeName) {
+    chatState.userName = maybeName;
+    return `Hi ${maybeName}! 👋\nNice to meet you. Main SID ChatBot hu.\nAap jo bhi puchoge, main best possible answer dene ki koshish karunga.`;
+  }
+
+  if (/(hi|hello|hey|hii)/i.test(trimmed)) {
+    const namePart = chatState.userName ? ` ${chatState.userName}` : '';
+    return `Hi${namePart}! Main SID ChatBot hu. 😊\nAap apna question bhejo — main directly uska answer dunga.`;
+  }
+
+  if (/(who are you|what are you|tum kaun ho|ap kaun ho)/i.test(trimmed)) {
+    return 'Main SID ChatBot hu — ek free ChatGPT-style assistant. Aap coding, ideas, writing, ya normal questions sab puch sakte ho.';
+  }
+
+  if (/(thanks|thank you|shukriya|dhanyawad)/i.test(trimmed)) {
+    return 'Most welcome! 🙌 Agar next question ho to seedha bhej do.';
+  }
+
+  if (/(bye|goodbye|see you|milte)/i.test(trimmed)) {
+    return 'Bye! 👋 Jab bhi zarurat ho, SID ChatBot available hai.';
+  }
+
+  const nameLead = chatState.userName ? `${chatState.userName}, ` : '';
+
+  return `${nameLead}${summarizeRequest(trimmed)}\n\n${getTaskTemplate(trimmed)}\n\nAgar aap chaho to main abhi isi query ka detailed final answer bhi generate kar deta hu — bas bolo: “detailed answer do”.`;
 }
 
 function simulateTypingAndReply(userText) {
@@ -66,7 +106,7 @@ function simulateTypingAndReply(userText) {
   window.setTimeout(() => {
     const response = buildSmartResponse(userText);
     typingBubble.querySelector('.message-text').textContent = response;
-  }, 450);
+  }, 400);
 }
 
 chatForm.addEventListener('submit', (event) => {
@@ -83,5 +123,5 @@ chatForm.addEventListener('submit', (event) => {
 
 addMessage(
   'bot',
-  'Welcome to SID ChatBot! ✨\nI am your free ChatGPT-style assistant. Start by typing a question below.'
+  'Welcome to SID ChatBot! ✨\nAap jo bhi puchoge uska answer dunga. Example: “Hi I am Sidhant” ya “Mujhe startup idea do”.'
 );
