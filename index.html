@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SID ChatBot</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <h1>SID ChatBot</h1>
+        <p>Your free ChatGPT-style assistant</p>
+        <small class="sub-note">Backend mode: replies come from ChatGPT (OpenAI API key).</small>
+      </header>
+
+      <section id="chatWindow" class="chat-window" aria-live="polite"></section>
+
+      <form id="chatForm" class="chat-form" autocomplete="off">
+        <label class="sr-only" for="messageInput">Type your message</label>
+        <input
+          id="messageInput"
+          name="message"
+          type="text"
+          placeholder="Ask anything..."
+          required
+        />
+        <button type="submit">Send</button>
+      </form>
+    </main>
+
+    <template id="messageTemplate">
+      <article class="message">
+        <span class="message-role"></span>
+        <p class="message-text"></p>
+      </article>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>
