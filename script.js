@@ -4,8 +4,7 @@ const messageInput = document.getElementById('messageInput');
 const messageTemplate = document.getElementById('messageTemplate');
 
 const chatState = {
-  userName: null,
-  turns: 0,
+  history: [],
 };
 
 function addMessage(role, text) {
@@ -15,98 +14,38 @@ function addMessage(role, text) {
   node.querySelector('.message-text').textContent = text;
   chatWindow.appendChild(node);
   chatWindow.scrollTop = chatWindow.scrollHeight;
+  return node;
 }
 
-function extractName(message) {
-  const namePatterns = [
-    /(?:i am|i'm|my name is)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})/i,
-    /(?:main|mai)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})\s+(?:hu|hoon)/i,
-    /(?:mera naam|myself)\s+([a-zA-Z][a-zA-Z\s'-]{1,30})/i,
-  ];
+async function getAiReply(message) {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      history: chatState.history,
+    }),
+  });
 
-  for (const pattern of namePatterns) {
-    const match = message.match(pattern);
-    if (match && match[1]) {
-      return match[1].trim().replace(/\s+/g, ' ');
-    }
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Unable to get response from server.');
   }
 
-  return null;
+  return data.reply;
 }
 
-function summarizeRequest(text) {
-  const cleaned = text.trim();
-  const shortText = cleaned.length > 120 ? `${cleaned.slice(0, 117)}...` : cleaned;
+async function simulateTypingAndReply(userText) {
+  const typingBubble = addMessage('bot', 'SID is thinking...');
 
-  return `Aapne pucha: “${shortText}”`;
-}
-
-function getTaskTemplate(text) {
-  const t = text.toLowerCase();
-
-  if (/(code|javascript|python|bug|fix|program|api|html|css)/i.test(t)) {
-    return 'Coding help mode ON ✅\n\nStep 1: Problem ko clear define karo.\nStep 2: Input/output examples do.\nStep 3: Main aapko clean solution + explanation de dunga.';
-  }
-
-  if (/(idea|startup|business|project)/i.test(t)) {
-    return 'Idea mode ON 🚀\n\n1) Niche choose karo\n2) Problem identify karo\n3) Solution build karo\n4) MVP test karo\n\nAgar chaho to main 5 ready-made ideas bhi de sakta hu.';
-  }
-
-  if (/(resume|cv|interview|job)/i.test(t)) {
-    return 'Career mode ON 💼\n\nMain aapka resume improve, interview Q&A prepare, aur role-specific answers bana sakta hu.';
-  }
-
-  if (/(summarize|summary|explain|samjha)/i.test(t)) {
-    return 'Explanation mode ON 📘\n\nMain difficult topic ko simple language me step-by-step samjha dunga.';
-  }
-
-  return 'Main is topic par aapko structured answer de sakta hu. Agar chaho to main isko:\n• short answer\n• detailed answer\n• step-by-step plan\nme convert kar du.';
-}
-
-function buildSmartResponse(input) {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return 'Kuch bhi pucho — main help karne ke liye ready hu.';
-  }
-
-  chatState.turns += 1;
-
-  const maybeName = extractName(trimmed);
-  if (maybeName) {
-    chatState.userName = maybeName;
-    return `Hi ${maybeName}! 👋\nNice to meet you. Main SID ChatBot hu.\nAap jo bhi puchoge, main best possible answer dene ki koshish karunga.`;
-  }
-
-  if (/(hi|hello|hey|hii)/i.test(trimmed)) {
-    const namePart = chatState.userName ? ` ${chatState.userName}` : '';
-    return `Hi${namePart}! Main SID ChatBot hu. 😊\nAap apna question bhejo — main directly uska answer dunga.`;
-  }
-
-  if (/(who are you|what are you|tum kaun ho|ap kaun ho)/i.test(trimmed)) {
-    return 'Main SID ChatBot hu — ek free ChatGPT-style assistant. Aap coding, ideas, writing, ya normal questions sab puch sakte ho.';
-  }
-
-  if (/(thanks|thank you|shukriya|dhanyawad)/i.test(trimmed)) {
-    return 'Most welcome! 🙌 Agar next question ho to seedha bhej do.';
-  }
-
-  if (/(bye|goodbye|see you|milte)/i.test(trimmed)) {
-    return 'Bye! 👋 Jab bhi zarurat ho, SID ChatBot available hai.';
-  }
-
-  const nameLead = chatState.userName ? `${chatState.userName}, ` : '';
-
-  return `${nameLead}${summarizeRequest(trimmed)}\n\n${getTaskTemplate(trimmed)}\n\nAgar aap chaho to main abhi isi query ka detailed final answer bhi generate kar deta hu — bas bolo: “detailed answer do”.`;
-}
-
-function simulateTypingAndReply(userText) {
-  addMessage('bot', 'SID is typing...');
-  const typingBubble = chatWindow.lastElementChild;
-
-  window.setTimeout(() => {
-    const response = buildSmartResponse(userText);
+  try {
+    const response = await getAiReply(userText);
     typingBubble.querySelector('.message-text').textContent = response;
-  }, 400);
+    chatState.history.push({ role: 'assistant', text: response });
+  } catch (error) {
+    typingBubble.querySelector('.message-text').textContent = `Error: ${error.message}`;
+  }
 }
 
 chatForm.addEventListener('submit', (event) => {
@@ -117,11 +56,12 @@ chatForm.addEventListener('submit', (event) => {
   }
 
   addMessage('user', text);
+  chatState.history.push({ role: 'user', text });
   messageInput.value = '';
   simulateTypingAndReply(text);
 });
 
 addMessage(
   'bot',
-  'Welcome to SID ChatBot! ✨\nAap jo bhi puchoge uska answer dunga. Example: “Hi I am Sidhant” ya “Mujhe startup idea do”.'
+  'Welcome to SID ChatBot! ✨\nAb main backend AI se real answers dunga. Kuch bhi pucho.'
 );

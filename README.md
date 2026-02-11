@@ -1,83 +1,97 @@
 # SID ChatBot
 
-A free ChatGPT-style chatbot interface built with plain HTML, CSS, and JavaScript.
+SID ChatBot is now a **real backend-powered chatbot**.
+It sends your message to **Google Gemini API** and returns actual AI answers (not hardcoded templates).
 
-## What this project is
-SID ChatBot is a **front-end only** chatbot demo:
-- No paid API key required
-- No backend/database required
-- Runs directly in a browser
+## What changed
+- Frontend sends messages to `/api/chat`
+- Backend (`server.js`) calls Gemini model
+- Google Search tool is enabled in request tools so model can use fresher web info when needed
 
 ---
 
-## 1) How to execute (run locally)
+## 1) Setup
 
-### Option A: Python (quickest)
+### Requirements
+- Node.js 18+
+- Gemini API key from Google AI Studio
+
+### Set API key
+Linux/macOS:
 ```bash
-python3 -m http.server 4173
+export GEMINI_API_KEY="your_api_key_here"
 ```
-Then open:
+
+Windows (PowerShell):
+```powershell
+setx GEMINI_API_KEY "your_api_key_here"
+```
+
+Optional model override:
+```bash
+export GEMINI_MODEL="gemini-2.0-flash"
+```
+
+---
+
+## 2) Run (execute)
+
+```bash
+node server.js
+```
+Open:
 - `http://localhost:4173`
 
-### Option B: VS Code Live Server
-- Open the project in VS Code
-- Install/use **Live Server** extension
-- Right click `index.html` → **Open with Live Server**
-
 ---
 
-## 2) How to test
+## 3) Test
 
-### A. JavaScript syntax check
+### A) Syntax checks
 ```bash
+node --check server.js
 node --check script.js
 ```
-Expected result: no output and exit code `0`.
 
-### B. Manual functional test
-1. Start local server (`python3 -m http.server 4173`)
-2. Open `http://localhost:4173`
-3. Verify:
-   - Welcome message appears
-   - Typing and clicking **Send** adds your message
-   - Bot shows “SID is typing...” then replies
-   - Layout works on mobile width (browser responsive mode)
+### B) API route test (without key)
+```bash
+curl -s -X POST http://localhost:4173/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello"}'
+```
+Expected: JSON error telling you to set `GEMINI_API_KEY`.
 
-### C. Quick browser smoke test (optional)
-If Playwright is available, automate open + send message + screenshot.
+### C) Real answer test (with key set)
+```bash
+curl -s -X POST http://localhost:4173/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hi I am Sidhant, explain recursion simply"}'
+```
+Expected: real generated answer from Gemini.
 
 ---
 
-## 3) How to use publicly
+## 4) Public deploy
 
-Because this is static HTML/CSS/JS, you can host it for free.
+Because this now has a backend, deploy to a Node host:
 
-### Option A: GitHub Pages
-1. Push this repo to GitHub
-2. Go to **Settings → Pages**
-3. Source: deploy from `main` branch root
-4. Your public URL will look like:
-   - `https://<username>.github.io/<repo-name>/`
+### Option A: Render / Railway / Fly.io
+- Deploy repo
+- Start command: `node server.js`
+- Add environment variable: `GEMINI_API_KEY`
+- (Optional) `GEMINI_MODEL`
 
-### Option B: Netlify / Vercel
-1. Import the repo
-2. Build command: *(none required)*
-3. Publish directory: `.`
-4. Deploy
-
-### Option C: Expose local network (same Wi-Fi)
-Run:
+### Option B: VPS
 ```bash
-python3 -m http.server 4173 --bind 0.0.0.0
+node server.js
 ```
-Then share:
-- `http://<your-local-ip>:4173`
+Then use Nginx/Caddy reverse proxy and HTTPS.
 
-> Note: this is still a local machine host, not internet-grade production hosting.
+> Do not expose API key in frontend JavaScript.
 
 ---
 
 ## Project files
-- `index.html` — app layout
-- `style.css` — visual styles
-- `script.js` — chatbot interaction logic
+- `index.html` — chat UI
+- `style.css` — styles
+- `script.js` — frontend chat client (calls backend)
+- `server.js` — backend API + static server

@@ -53,6 +53,13 @@ body {
   font-size: 0.92rem;
 }
 
+.sub-note {
+  display: block;
+  margin-top: 0.4rem;
+  color: #b8c8ee;
+  font-size: 0.78rem;
+}
+
 .chat-window {
   padding: 1rem;
   overflow-y: auto;
